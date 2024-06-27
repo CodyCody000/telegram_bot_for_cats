@@ -17,3 +17,10 @@ async def make_keyboard_accepting(id):
         [InlineKeyboardButton(text='Нет, неправильно😠',
                               callback_data=f'rejected_{id}')]
     ])
+
+
+async def make_profile_markup(id):
+    return InlineKeyboardMarkup(inline_keyboard=[
+        [InlineKeyboardButton(text='Открыть профиль :3',
+                              callback_data='profile_{id}')]
+    ])

@@ -1,31 +1,22 @@
 import asyncio
 from dotenv import dotenv_values
 
-<<<<<<< HEAD
 from aiogram import Bot, Dispatcher
-from app.handlers import rt  # type: ignore
-from database.database import init  # type: ignore
-=======
-from aiogram import Bot, Dispatcher, F
-from aiogram.filters import CommandStart
-from aiogram.types import Message
-
 from app.registration import reg_router, admin_chat_router
->>>>>>> 81e2d93 (Base functional for registration)
+from app.coins import group_router, private_router  # type: ignore
+from database.database import init
 
 
 async def main():
     bot = Bot(dotenv_values().get('TOKEN'))
     dp = Dispatcher()
-<<<<<<< HEAD
 
-    init()
+    await init()
 
-    dp.include_router(rt)
-=======
     dp.include_routers(reg_router, admin_chat_router)
->>>>>>> 81e2d93 (Base functional for registration)
+    dp.include_routers(group_router, private_router)
     print('Start bot(Ctrl-C for stop)')
+    await bot.send_message(dotenv_values().get('ADMIN_GROUP_ID'), 'Я запустился^^')
     await dp.start_polling(bot)
 
 if __name__ == '__main__':

@@ -32,4 +32,4 @@ async def get_user(user_id):
         db.row_factory = aiosqlite.Row
         async with db.execute('SELECT * FROM users WHERE user_id = ?',
                               (user_id,)) as cursor:
-            return cursor.fetchone() or False
+            return await cursor.fetchone()
