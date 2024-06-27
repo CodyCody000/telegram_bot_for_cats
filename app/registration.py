@@ -3,17 +3,17 @@ from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart, StateFilter
 from aiogram.types import Message, CallbackQuery
+from aiogram.enums import ParseMode
 from random import choice
 from dotenv import dotenv_values
+from time import time
 
 from app.filters import NameFilter, AgeLimit  # type: ignore
 from app.keyboards import checking_choise_markup, checking_cancel_markup, make_keyboard_accepting  # type: ignore
 
-hand_emojies = ['👊', '✊', '👌', '☝', '👋',
-                '👎', '👍', '👏', '✌', '🖐', '🖖', '🤙', '🤟']
+hand_emojies = ['👊', '✊', '👌', '☝', '👎', '👍', '🙏', '✌', '🖐', '🖖', '🤙', '🤟']
 
 ADMIN_GROUP_ID = dotenv_values().get('ADMIN_GROUP_ID')
-photoes = []
 
 
 class RegistrationStates(StatesGroup):
@@ -36,6 +36,17 @@ admin_chat_router.message.filter(F.chat.type.in_(['group', 'supergroup']))
 async def start(message: Message, state: FSMContext):
     await state.clear()
     await state.update_data(user_id=message.from_user.id)
+    await state.update_data(photoes=[])
+    await message.answer('''*Ведётся набор в gay\-чатик*🏳️‍🌈
+
+_В чем плюс?_
+Наш чат небольшой, тут все друг друга знают, ламповое общение и обмены помогут найти друзей💖
+
+• _Возраст_: до 18 лет🙈
+• _Проверка_: кружок или фото со знаками😳
+• _Конкурс_: имеются🌹
+• _Призы_: естественно💕
+• _Актив и общение_: завались🫣''', parse_mode=ParseMode.MARKDOWN_V2)
     await message.answer('Привет! Как к тебе можно обращаться?^^')
     await state.set_state(RegistrationStates.name)
 
@@ -68,8 +79,9 @@ async def known_age_error(message: Message):
 @reg_router.callback_query(RegistrationStates.video_note, F.data == 'cancel')
 @reg_router.callback_query(RegistrationStates.photoes, F.data == 'cancel')
 async def cancelled(callback: CallbackQuery, state: FSMContext):
-    global photoes
-    photoes.clear()
+
+    data = await state.get_data()
+    data.get('photoes').clear()
     await callback.message.answer('Выбери тип проверки, которая нужна, чтобы к нам заходили только дети^^',
                                   reply_markup=checking_choise_markup)
     await state.set_state(RegistrationStates.task)
@@ -89,7 +101,7 @@ async def video_note_task(callback: CallbackQuery, state: FSMContext):
     task = generate_video_note_task()
     await state.update_data(task=task)
     await state.set_state(RegistrationStates.video_note)
-    await callback.message.answer(f'Итак, вот твоя задача:\n\n{task}', reply_markup=checking_cancel_markup)
+    await callback.message.answer(f'Итак, отправь кружок с лицом или телом, чтобы было понятненько, что тебе меньше 18^^', reply_markup=checking_cancel_markup)
     await callback.answer()
 
 
@@ -101,20 +113,21 @@ async def video_note_check(message: Message, state: FSMContext):
     await message.answer('Оки, сейчас всё проверят и я скажу, нормик или нет^^')
     await message.bot.send_video_note(ADMIN_GROUP_ID, message.video_note.file_id)
     await message.bot.send_message(ADMIN_GROUP_ID, f'Чувачок @{message.from_user.username} сказал, \
-что он {data.get('name')}, ему {data.get('age')} и он отправил кружок c таким заданием:\n\n{data.get('task')}\n\nПринимаем???', reply_markup=keyboard)
+что он {data.get('name')}, ему {data.get('age')} и он отправил кружок c телом или лицом. Принимаем???', reply_markup=keyboard)
 
 
 def generate_photoes_task():
     hand_emojies_set = set()
-    while len(hand_emojies_set) < 2:
+    while len(hand_emojies_set) < 3:
         hand_emojies_set.add(choice(hand_emojies))
-    return 'Скинь 2 фотки. На 1 ты показываешь грудь с этим жестом "{}", на 2 ты показываешь торс с этим жестом "{}"'.format(*list(hand_emojies_set))
+    return 'Cкинь 3 фотки с 3 нужными жестами: {}, {}, и {}. Время потрать не больше 10 минут'.format(*list(hand_emojies_set))
 
 
 @reg_router.callback_query(RegistrationStates.task, F.data == 'photoes')
 async def video_note_task(callback: CallbackQuery, state: FSMContext):
     task = generate_photoes_task()
     await state.update_data(task=task)
+    await state.update_data(time=time())
     await state.set_state(RegistrationStates.photoes)
     await callback.message.answer(f'Итак, вот твоя задача:\n\n{task}', reply_markup=checking_cancel_markup)
     await callback.answer()
@@ -122,19 +135,23 @@ async def video_note_task(callback: CallbackQuery, state: FSMContext):
 
 @reg_router.message(RegistrationStates.photoes, F.photo)
 async def video_note_check(message: Message, state: FSMContext):
-    global photoes
-    photoes.append(message.photo[-1])
-    if len(photoes) == 2:
-        local_photoes = photoes.copy()
-        photoes.clear()
-        await state.set_state(RegistrationStates.checking)
-        data = await state.get_data()
-        keyboard = await make_keyboard_accepting(data.get('user_id'))
-        await message.answer('Оки, сейчас всё проверят и я скажу, нормик или нет^^')
-        await message.bot.send_photo(ADMIN_GROUP_ID, local_photoes[0].file_id)
-        await message.bot.send_photo(ADMIN_GROUP_ID, local_photoes[1].file_id)
-        await message.bot.send_message(ADMIN_GROUP_ID, f'Чувачок @{message.from_user.username} сказал, \
+    data = await state.get_data()
+    if (time() - data.get('time')) <= 600:
+        photoes = data.get('photoes')
+        photoes.append(message.photo[-1])
+        if len(photoes) >= 3:
+            local_photoes = photoes.copy()
+            photoes.clear()
+            await state.set_state(RegistrationStates.checking)
+            keyboard = await make_keyboard_accepting(data.get('user_id'))
+            await message.answer('Оки, сейчас всё проверят и я скажу, нормик или нет^^')
+            await message.bot.send_photo(ADMIN_GROUP_ID, local_photoes[0].file_id)
+            await message.bot.send_photo(ADMIN_GROUP_ID, local_photoes[1].file_id)
+            await message.bot.send_photo(ADMIN_GROUP_ID, local_photoes[2].file_id)
+            await message.bot.send_message(ADMIN_GROUP_ID, f'Чувачок @{message.from_user.username} сказал, \
 что он {data.get('name')}, ему {data.get('age')} и он отправил фоточки c таким заданием:\n\n{data.get('task')}\n\nПринимаем???', reply_markup=keyboard)
+    else:
+        await message.answer('Ты не успел( Нажми "Отмена" и попробуй ещё раз', reply_markup=checking_cancel_markup)
 
 
 @admin_chat_router.callback_query(F.data.startswith('accepted'))
