@@ -1,15 +1,14 @@
 import aiosqlite
 import aiofiles
 from enum import StrEnum
+from database.database_shop import init_shop
 
-
-class Columns(StrEnum):
-    user_id = 'user_id'
-    user_is_admin = 'user_is_admin'
-    name = 'name'
-    username = 'username'
-    age = 'age'
-    coins = 'coins'
+# user_id
+# user_is_admin
+# name
+# username
+# age
+# coins
 
 
 async def init() -> None:
@@ -18,6 +17,7 @@ async def init() -> None:
         script = await file.read()
         await db.execute(script)
         await db.commit()
+        await init_shop()
 
 
 async def new_user(user_id: int, name: str, username: str | None, age: int) -> None:
