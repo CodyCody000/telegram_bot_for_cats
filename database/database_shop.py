@@ -24,19 +24,19 @@ async def add_product(title: str, description: str, author_id: int, price: int) 
         await db.commit()
 
 
-async def get_list_of_products(author_id: int | None = None) -> int:
+async def get_list_of_products(author_id: int | None = None) -> list[aiosqlite.Row] | None:
     async with aiosqlite.connect('database.db') as db:
-        db.row_factory = aiosqlite.Row
         rows = []
+        db.row_factory = aiosqlite.Row
         if author_id is None:
-            async with db.execute('SELECT title, product_id FROM shop') as cursor:
+            async with db.execute('SELECT * FROM shop') as cursor:
                 async for row in cursor:
-                    rows.append((row['title'], row['product_id']))
+                    rows.append(row)
         else:
-            async with db.execute('SELECT title, product_id FROM shop WHERE author_id = ?',
+            async with db.execute('SELECT * FROM shop WHERE author_id = ?',
                                   (author_id,)) as cursor:
                 async for row in cursor:
-                    rows.append((row['title'], row['product_id']))
+                    rows.append(row)
         return rows or None
 
 

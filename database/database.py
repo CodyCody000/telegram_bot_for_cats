@@ -17,7 +17,7 @@ async def init() -> None:
         script = await file.read()
         await db.execute(script)
         await db.commit()
-        await init_shop()
+    await init_shop()
 
 
 async def new_user(user_id: int, name: str, username: str | None, age: int) -> None:
