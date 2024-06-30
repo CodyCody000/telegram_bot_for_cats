@@ -28,7 +28,7 @@ async def new_user(user_id: int, name: str, username: str | None, age: int) -> N
         await db.commit()
 
 
-async def get_user(user_id: int) -> aiosqlite.Row:
+async def get_user(user_id: int) -> aiosqlite.Row | None:
     async with aiosqlite.connect('database.db') as db:
         db.row_factory = aiosqlite.Row
         async with db.execute('SELECT * FROM users WHERE user_id = ?',
@@ -58,7 +58,7 @@ async def get_coins_id(user_id: int) -> int:
         async with db.execute('SELECT coins FROM users WHERE user_id = ?',
                               (user_id,)) as cursor:
             row = await cursor.fetchone()
-            return row and row['coins']
+            return row['coins']
 
 
 async def set_coins_id(coins: int, user_id: int) -> None:
@@ -66,3 +66,11 @@ async def set_coins_id(coins: int, user_id: int) -> None:
         await db.execute('UPDATE users SET coins = ? WHERE user_id = ?',
                          (coins, user_id))
         await db.commit()
+
+
+async def get_max_coins() -> int:
+    async with aiosqlite.connect('database.db') as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute('SELECT MAX(coins) AS max_coins FROM users') as cursor:
+            row = await cursor.fetchone()
+            return row['max_coins']

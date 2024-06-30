@@ -42,6 +42,7 @@ async def get_list_of_products(author_id: int | None = None) -> list[aiosqlite.R
 
 async def get_product(product_id: int) -> aiosqlite.Row:
     async with aiosqlite.connect('database.db') as db:
+        db.row_factory = aiosqlite.Row
         async with db.execute('SELECT * FROM shop WHERE product_id = ?',
                               (product_id,)) as cursor:
             return await cursor.fetchone()

@@ -14,7 +14,6 @@ from app.keyboards import (checking_choise_markup, checking_cancel_markup,
                            make_keyboard_accepting, make_profile_markup,
                            shop_markup)
 from database.database import new_user, get_user
-from app.shop import list_of_products, create_product, list_of_user_products
 
 hand_emojies = ['👊', '✊', '👌', '☝', '👎', '👍', '✌', '🖐', '🖖', '🤙', '🤟']
 
@@ -61,7 +60,7 @@ async def start(message: Message, state: FSMContext):
         name = user['name']
         coins = user['coins']
         await typing(message)
-        await message.answer(f'Приветик, {name}^^\nКоличество монеток: {coins}\nВнизу всякие штучки с магазином^^', reply_markup=shop_markup)
+        await message.answer(f'Приветик, {name}^^\nКоличество монеток: {coins}\nНапиши "/shop", чтобы открыть магазинчик^^')
     elif not (await state.get_state() is None):
         await typing(message)
         await message.answer('Подожди, когда примут заявочку')
@@ -85,20 +84,6 @@ async def start(message: Message, state: FSMContext):
         await typing(message)
         await message.answer('Привет! Как к тебе можно обращаться?^^')
         await state.set_state(RegistrationStates.name)
-
-
-@reg_router.callback_query(F.data.startswith('shop__'))
-async def shop_action(callback: CallbackQuery):
-    match callback.data.removeprefix('shop__'):
-        case 'list_of_products':
-            await list_of_products(callback)
-        case 'create_product':
-            await create_product(callback)
-        case 'list_of_user_products':
-            await list_of_user_products(callback)
-        case unknown:
-            callback.message.answer(
-                f'Непонятненький запрос в магазин( Что такое {unknown}?')
 
 
 @reg_router.message(RegistrationStates.name, NameFilter(20), F.text)
