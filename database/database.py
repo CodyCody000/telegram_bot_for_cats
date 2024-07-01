@@ -36,6 +36,14 @@ async def get_user(user_id: int) -> aiosqlite.Row | None:
             return await cursor.fetchone()
 
 
+async def get_user_username(username: str) -> aiosqlite.Row | None:
+    async with aiosqlite.connect('database.db') as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute('SELECT * FROM users WHERE username = ?',
+                              (username,)) as cursor:
+            return await cursor.fetchone()
+
+
 async def get_coins(username: str) -> int:
     async with aiosqlite.connect('database.db') as db:
         db.row_factory = aiosqlite.Row

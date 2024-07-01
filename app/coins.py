@@ -3,12 +3,13 @@ from aiogram.filters import Command, CommandObject
 from aiogram.types import Message, ChatMemberAdministrator, ChatMemberOwner
 from aiogram.enums import ParseMode
 from aiogram import html
+
+from app.filters import IsRegistrated
 from database.database import get_coins, set_coins, get_coins_id, set_coins_id  # type: ignore
 
 group_router = Router()
-group_router.message.filter(F.chat.type.in_(['group', 'supergroup']))
-private_router = Router()
-private_router.message.filter(F.chat.type == 'private')
+group_router.message.filter(F.chat.type.in_(['group', 'supergroup']),
+                            IsRegistrated())
 
 
 async def is_admin(message: Message):

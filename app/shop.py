@@ -51,6 +51,69 @@ async def generate_text_message(product: Row) -> str:
 <b>Цена: </b>{product['price']}'''
 
 
+async def list_of_user_products(callback: CallbackQuery,
+                                current_idx: int = 0):
+    list_of_products = await get_list_of_products(callback.message.chat.id)
+
+    try:
+        text_messge = await generate_text_message(list_of_products[current_idx])
+    except TypeError:
+        await callback.message.edit_text('<i>Вы ещё не создали ни одного товара(</i>',
+                                         parse_mode=ParseMode.HTML,
+                                         reply_markup=return_markup)
+        return
+
+    markup_list_of_products = await generate_markup_list_of_products(
+        current_idx, list_of_products, from_user=True)
+
+    await callback.message.edit_text(text_messge,
+                                     parse_mode=ParseMode.HTML,
+                                     reply_markup=markup_list_of_products
+                                     )
+
+
+@shop_router.callback_query(F.data.startswith('next_user_'))
+async def next_product(callback: CallbackQuery):
+    next_idx = int(callback.data.removeprefix('next_user_')) + 1
+    await list_of_user_products(callback, next_idx)
+
+
+@shop_router.callback_query(F.data.startswith('back_user_'))
+async def next_product(callback: CallbackQuery):
+    next_idx = int(callback.data.removeprefix('back_user_')) - 1
+    await list_of_user_products(callback, next_idx)
+
+
+@shop_router.callback_query(StateFilter(None), F.data.startswith('delete_'))
+async def delete_question(callback: CallbackQuery, state: FSMContext):
+    await state.update_data(product_id=int(callback.data.removeprefix('delete_')))
+    await callback.message.edit_text('Вы точно хотите удалить этот товар?',
+                                     reply_markup=question_markup)
+    await state.set_state(delete_question_state)
+
+
+@shop_router.callback_query(delete_question_state, F.data == 'yes')
+async def delete_yes(callback: CallbackQuery, state: FSMContext):
+    data = await state.get_data()
+    product_id = data.get('product_id')
+
+    info_of_product = await get_product(product_id)
+    title_of_product = info_of_product['title']
+
+    await remove_product(product_id)
+    await callback.message.edit_text(f'Вы удалили товар {title_of_product}',
+                                     reply_markup=return_to_list_markup)
+
+
+@shop_router.callback_query(delete_question_state, F.data.in_(['no', 'return_to_list']))
+async def return_to_user_list(callback: CallbackQuery, state: FSMContext):
+    await state.clear()
+    await list_of_user_products(callback)
+
+
+###############################################################################
+
+
 async def list_of_products(callback: CallbackQuery,
                            current_idx: int = 0):
 
@@ -226,67 +289,6 @@ async def cancel(message: Message, state: FSMContext):
                              reply_markup=shop_markup)
 
 
-###############################################################################
-
-
-async def list_of_user_products(callback: CallbackQuery,
-                                current_idx: int = 0):
-    list_of_products = await get_list_of_products(callback.message.chat.id)
-
-    try:
-        text_messge = await generate_text_message(list_of_products[current_idx])
-    except TypeError:
-        await callback.message.edit_text('<i>Вы ещё не создали ни одного товара(</i>',
-                                         parse_mode=ParseMode.HTML,
-                                         reply_markup=return_markup)
-        return
-
-    markup_list_of_products = await generate_markup_list_of_products(
-        current_idx, list_of_products, from_user=True)
-
-    await callback.message.edit_text(text_messge,
-                                     parse_mode=ParseMode.HTML,
-                                     reply_markup=markup_list_of_products
-                                     )
-
-
-@shop_router.callback_query(F.data.startswith('next_user_'))
-async def next_product(callback: CallbackQuery):
-    next_idx = int(callback.data.removeprefix('next_user_')) + 1
-    await list_of_user_products(callback, next_idx)
-
-
-@shop_router.callback_query(F.data.startswith('back_user_'))
-async def next_product(callback: CallbackQuery):
-    next_idx = int(callback.data.removeprefix('back_user_')) - 1
-    await list_of_user_products(callback, next_idx)
-
-
-@shop_router.callback_query(StateFilter(None), F.data.startswith('delete_'))
-async def delete_question(callback: CallbackQuery, state: FSMContext):
-    await state.update_data(product_id=int(callback.data.removeprefix('delete_')))
-    await callback.message.edit_text('Вы точно хотите удалить этот товар?',
-                                     reply_markup=question_markup)
-    await state.set_state(delete_question_state)
-
-
-@shop_router.callback_query(delete_question_state, F.data == 'yes')
-async def delete_yes(callback: CallbackQuery, state: FSMContext):
-    data = await state.get_data()
-    product_id = data.get('product_id')
-
-    info_of_product = await get_product(product_id)
-    title_of_product = info_of_product['title']
-
-    await remove_product(product_id)
-    await callback.message.edit_text(f'Вы удалили товар {title_of_product}',
-                                     reply_markup=return_to_list_markup)
-
-
-@shop_router.callback_query(delete_question_state, F.data.in_(['no', 'return_to_list']))
-async def return_to_user_list(callback: CallbackQuery, state: FSMContext):
-    await state.clear()
-    await list_of_user_products(callback)
 ###############################################################################
 
 

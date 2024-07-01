@@ -8,6 +8,7 @@ from random import choice
 from dotenv import dotenv_values
 from time import time
 from asyncio import sleep
+from pprint import pprint
 
 from app.filters import NameFilter, AgeLimit
 from app.keyboards import (checking_choise_markup, checking_cancel_markup,
@@ -33,6 +34,11 @@ reg_router = Router()
 reg_router.message.filter(F.chat.type == 'private')
 admin_chat_router = Router()
 admin_chat_router.message.filter(F.chat.type.in_(['group', 'supergroup']))
+
+
+@reg_router.message(F.document)
+async def get_photo_id(message: Message):
+    pprint(message.document)
 
 
 async def typing(message: Message):
