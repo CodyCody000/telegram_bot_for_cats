@@ -176,5 +176,6 @@ pyrightconfig.json
 
 # Database
 database.db
+database.db-journal
 
 # End of https://www.toptal.com/developers/gitignore/api/python

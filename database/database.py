@@ -2,6 +2,7 @@ import aiosqlite
 import aiofiles
 from enum import StrEnum
 from database.database_shop import init_shop
+from database.database_pool import init_pool
 
 # user_id
 # user_is_admin
@@ -18,6 +19,7 @@ async def init() -> None:
         await db.execute(script)
         await db.commit()
     await init_shop()
+    await init_pool()
 
 
 async def new_user(user_id: int, name: str, username: str | None, age: int) -> None:

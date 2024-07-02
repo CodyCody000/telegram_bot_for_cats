@@ -6,6 +6,8 @@ from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
 
 from database.database import get_max_coins, get_user
+from database.database_pool import get_contest_info, get_candidates
+from time import time
 
 
 class NameFilter(BaseFilter):
@@ -40,9 +42,40 @@ class IsRegistrated(BaseFilter):
 
         user_info = await get_user(message.from_user.id)
         if user_info is None:
-            message.reply(
+            await message.reply(
                 'Ты не зарегестрирован, для регистрации зайди в лс ботику и напиши "/start"^^')
             return False
+        return True
+
+
+class ContestStarted(BaseFilter):
+    async def __call__(self, message: Message) -> Any:
+        contest_info = await get_contest_info()
+        if contest_info is None:
+            await message.reply(
+                'Конкурса нет^^ Если хочешь создать свой и если ты админчик, то пиши "/create_contest"^^')
+            return False
+        return True
+
+
+class EarlierThan(BaseFilter):
+    async def __call__(self, message: Message) -> Any:
+        contest_info = await get_contest_info()
+        if time() >= contest_info['time_for_candidate']:
+            await message.reply(
+                'Ты не успел( Жди результатики'
+            )
+            return False
+        return True
+
+
+class IsNotRegistrated(BaseFilter):
+    async def __call__(self, message: Message) -> Any:
+        candidates = await get_candidates()
+        for candidate in candidates:
+            if message.from_user.id == candidate['user_id']:
+                await message.answer('Ты уже зарегестрирован в конкурсе^^')
+                return False
         return True
 
 
