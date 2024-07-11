@@ -1,4 +1,4 @@
-from aiogram import Router, F, html
+from aiogram import Router, F, html, Bot
 from aiogram.fsm.state import State, StatesGroup
 from aiogram.fsm.context import FSMContext
 from aiogram.filters import CommandStart, StateFilter, Command
@@ -7,10 +7,10 @@ from aiogram.enums import ParseMode, ChatAction
 from random import choice
 from dotenv import dotenv_values
 from time import time
+from datetime import datetime, timedelta
 from asyncio import sleep
-from pprint import pprint
 
-from app.filters import NameFilter, AgeLimit
+from app.filters import NameFilter, AgeLimit, IsInChatAndChannel, IsNotBanned
 from app.keyboards import (checking_choise_markup, checking_cancel_markup,
                            make_keyboard_accepting, make_profile_markup,
                            shop_markup)
@@ -75,14 +75,9 @@ class RegistrationStates(StatesGroup):
 
 
 reg_router = Router()
-reg_router.message.filter(F.chat.type == 'private')
+reg_router.message.filter(F.chat.type == 'private', IsNotBanned())
 admin_chat_router = Router()
 admin_chat_router.message.filter(F.chat.type.in_(['group', 'supergroup']))
-
-
-@reg_router.message(F.document)
-async def get_photo_id(message: Message):
-    pprint(message.document)
 
 
 async def typing(message: Message):
@@ -112,7 +107,7 @@ async def start(message: Message, state: FSMContext):
         coins = user['coins']
         await typing(message)
         await message.answer(f'Приветик, {name}^^\nКоличество монеток: {coins}\nНапиши "/shop", чтобы открыть магазинчик^^')
-    elif not (await state.get_state() is None):
+    elif await state.get_state() is not None:
         await typing(message)
         await message.answer('Подожди, когда примут заявочку')
         print(await state.get_state())
@@ -249,13 +244,26 @@ async def video_note_check(message: Message, state: FSMContext):
         await message.answer('Ты не успел( Нажми "Отмена" и попробуй ещё раз', reply_markup=checking_cancel_markup)
 
 
+async def generate_invite_link(bot: Bot) -> str:
+    chat_id = dotenv_values()['CATS_GROUP_ID']
+    expire_date = datetime.now() + timedelta(1)
+    link = await bot.create_chat_invite_link(
+        chat_id=chat_id,
+        expire_date=expire_date,
+        member_limit=1
+    )
+
+    return link.invite_link
+
+
 @admin_chat_router.callback_query(F.data.startswith('accepted'))
 async def accepted(callback: CallbackQuery):
     user_id = callback.data.split('_')[-1]
     await typing(callback.message)
     await callback.bot.send_message(user_id, RULES, parse_mode=ParseMode.HTML)
     await typing(callback.message)
-    await callback.bot.send_message(user_id, 'Молодец, ты прошёл проверочку! Вот ссылка на наш чатик^^ <типо ссылка>. Нажми на кнопку внизу, чтобы создать свой профиль^^ Позже, используй "/start" для открытия профиля^^ Также советую ознакомиться с правилами выше, чтобы не получить бан^^',
+    invite_link = generate_invite_link(callback.bot)
+    await callback.bot.send_message(user_id, f'Молодец, ты прошёл проверочку! Вот ссылка на наш чатик^^ {invite_link}. Нажми на кнопку внизу, чтобы создать свой профиль^^ Позже, используй "/start" для открытия профиля^^ Также советую ознакомиться с правилами выше, чтобы не получить бан^^',
                                     reply_markup=await make_profile_markup(user_id))
     await callback.message.edit_text(text='✅', reply_markup=None)
 

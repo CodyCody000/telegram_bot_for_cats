@@ -38,6 +38,13 @@ async def get_user(user_id: int) -> aiosqlite.Row | None:
             return await cursor.fetchone()
 
 
+async def get_users() -> list[aiosqlite.Row]:
+    async with aiosqlite.connect('database.db') as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute('SELECT * FROM users') as cursor:
+            return await cursor.fetchall()
+
+
 async def get_user_username(username: str) -> aiosqlite.Row | None:
     async with aiosqlite.connect('database.db') as db:
         db.row_factory = aiosqlite.Row
@@ -84,3 +91,41 @@ async def get_max_coins() -> int:
         async with db.execute('SELECT MAX(coins) AS max_coins FROM users') as cursor:
             row = await cursor.fetchone()
             return row['max_coins']
+
+
+async def get_warns(user_id: int) -> int:
+    async with aiosqlite.connect('database.db') as db:
+        db.row_factory = aiosqlite.Row
+        async with db.execute('SELECT warn_count FROM users WHERE user_id = ?', (user_id,)) as cursor:
+            row = await cursor.fetchone()
+            return row[0]
+
+
+async def incriment_warns(user_id: int) -> None:
+    async with aiosqlite.connect('database.db') as db:
+        await db.execute('UPDATE users SET warn_count = warn_count + 1 WHERE user_id = ?', (user_id,))
+        await db.commit()
+
+
+async def decriment_warns(user_id) -> None:
+    async with aiosqlite.connect('database.db') as db:
+        await db.execute('UPDATE users SET warn_count = warn_count - 1 WHERE user_id = ?', (user_id,))
+        await db.commit()
+
+
+async def clear_warns(user_id: int) -> None:
+    async with aiosqlite.connect('database.db') as db:
+        await db.execute('UPDATE users SET warn_count = 0 WHERE user_id = ?', (user_id,))
+        await db.commit()
+
+
+async def set_ban_state(user_id: int, state: bool):
+    async with aiosqlite.connect('database.db') as db:
+        await db.execute('UPDATE users SET is_banned = ? WHERE user_id = ?', (int(state), user_id))
+        await db.commit()
+
+
+async def set_mute_state(user_id: int, state: bool):
+    async with aiosqlite.connect('database.db') as db:
+        await db.execute('UPDATE users SET is_muted = ? WHERE user_id = ?', (int(state), user_id))
+        await db.commit()

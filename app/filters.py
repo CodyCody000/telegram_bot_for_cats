@@ -1,13 +1,20 @@
 from typing import Any
-from aiogram import Bot
-from aiogram.filters import BaseFilter
+from aiogram import Bot, html
+from aiogram.filters import BaseFilter, CommandObject
 from aiogram.types import Message
+from aiogram.types import (ChatMemberAdministrator, ChatMemberOwner,
+                           ChatMemberMember, ChatMemberLeft, ChatMemberRestricted,
+                           ChatMemberBanned, ChatMember)
 from aiogram.fsm.context import FSMContext
 from aiogram.fsm.state import State, StatesGroup
+from aiogram.enums import ParseMode
 
-from database.database import get_max_coins, get_user
+from typing import Literal
+
+from database.database import get_max_coins, get_user, get_user_username
 from database.database_pool import get_contest_info, get_candidates
 from time import time
+from dotenv import dotenv_values
 
 
 class NameFilter(BaseFilter):
@@ -37,6 +44,7 @@ class PriceFilter(BaseFilter):
 
 class IsRegistrated(BaseFilter):
     async def __call__(self, message: Message) -> Any:
+        # print(self.__class__.__name__)
         if message.from_user.is_bot:
             return True
 
@@ -50,6 +58,7 @@ class IsRegistrated(BaseFilter):
 
 class ContestStarted(BaseFilter):
     async def __call__(self, message: Message) -> Any:
+        # print(self.__class__.__name__)
         contest_info = await get_contest_info()
         if contest_info is None:
             await message.reply(
@@ -60,6 +69,7 @@ class ContestStarted(BaseFilter):
 
 class EarlierThan(BaseFilter):
     async def __call__(self, message: Message) -> Any:
+        # print(self.__class__.__name__)
         contest_info = await get_contest_info()
         if time() >= contest_info['time_for_candidate']:
             await message.reply(
@@ -71,10 +81,72 @@ class EarlierThan(BaseFilter):
 
 class IsNotRegistrated(BaseFilter):
     async def __call__(self, message: Message) -> Any:
+        # print(self.__class__.__name__)
         candidates = await get_candidates()
         for candidate in candidates:
             if message.from_user.id == candidate['user_id']:
                 await message.answer('Ты уже зарегестрирован в конкурсе^^')
+                return False
+        return True
+
+
+class IsInChatAndChannel(BaseFilter):
+    async def __call__(self, message: Message) -> Any:
+        # print(self.__class__.__name__)
+        values = dotenv_values()
+        user_id = message.from_user.id
+        group_info = await message.bot.get_chat_member(values['CATS_GROUP_ID'], user_id)
+        if await self.chat_info_check(group_info):
+            channel_info = await message.bot.get_chat_member(values['CATS_CHANNEL_ID'], user_id)
+            if await self.chat_info_check(channel_info):
+                return True
+            else:
+                await message.reply('Ты не в канале в данный момент(\nСпроси у админов насчёт этого: @your_lovely_catty и @hooiiiiiii')
+        else:
+            await message.reply('Ты не в группе в данный момент(\nСпроси у админов насчёт этого: @your_lovely_catty и @hooiiiiiii')
+        return False
+
+    async def chat_info_check(self, chat_info: ChatMember) -> bool:
+        if isinstance(chat_info, (ChatMemberMember,
+                                  ChatMemberAdministrator,
+                                  ChatMemberOwner)) or (isinstance(chat_info, ChatMemberRestricted) and chat_info.is_member):
+            return True
+        return False
+
+
+class CorrectCommand(BaseFilter):
+    async def __call__(self, message: Message, command: CommandObject):
+        # print(self.__class__.__name__)
+        error_message = f'Ммм... Если что, чтобы командкой воспользоваться, нужно написать \
+{html.code(f'/{command.command} @[юзернейм]')} или просто {html.code(f'/{command.command}')}, если отвечаешь на какое нить сообщеньице'
+
+        if message.reply_to_message and command.args:
+            await message.reply(error_message, parse_mode=ParseMode.HTML)
+            return False
+        elif command.args and (not command.args.startswith('@')):
+            await message.reply(error_message, parse_mode=ParseMode.HTML)
+            return False
+        return True
+
+
+class IsNotBanned(BaseFilter):
+    async def __call__(self, message: Message) -> Any:
+        # print(self.__class__.__name__)
+        user_info = await get_user_username(message.from_user.username)
+        if user_info and user_info['is_banned']:
+            await message.answer('Ты забанен( Если хочешь разбаниться, пиши админам @your_lovely_catty и @hooiiiiiii')
+            return False
+        return True
+
+
+class IsNotMuted(BaseFilter):
+    async def __call__(self, message: Message) -> Any:
+        # print(self.__class__.__name__)
+        user_info = await get_user_username(message.from_user.username)
+        if user_info and user_info['is_muted']:
+            try:
+                await message.delete()
+            finally:
                 return False
         return True
 

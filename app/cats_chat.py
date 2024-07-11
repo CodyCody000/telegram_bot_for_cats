@@ -7,14 +7,11 @@ from aiogram.enums import ParseMode
 from dotenv import dotenv_values
 
 from database.database import get_user, get_user_username
-from app.filters import IsRegistrated
+from app.filters import IsRegistrated, IsNotMuted, IsInChatAndChannel
 
 cats_chat = Router()
 cats_chat.message.filter(F.chat.type.in_(['group', 'supergroup']),
-                         IsRegistrated())
-cats_chat.callback_query.filter(F.chat.type.in_(['group', 'supergroup']),
-                                IsRegistrated())
-
+                         IsRegistrated(), IsNotMuted(), IsInChatAndChannel())
 actions = {
     'обнять': ('{} обнял котика {} 🤗', 'HUGGING'),
     'шлёпнуть': ('{} шлёпнул котика {} 👋', 'SLAPPING'),

@@ -12,7 +12,9 @@ from aiosqlite import Row
 from dotenv import dotenv_values
 from time import time
 
-from app.filters import IsRegistrated, ContestStarted, EarlierThan
+from app.filters import (IsRegistrated, ContestStarted,
+                         EarlierThan, IsInChatAndChannel,
+                         IsNotBanned)
 from database.database_pool import (get_contest_info, write_row_in_database,
                                     get_candidates, clear_contest,
                                     get_candidate, incriment_candidate)
@@ -90,7 +92,8 @@ TIME_FOR_CANDIDATES = [[0]]
 
 poll_private_router = Router()
 poll_private_router.message.filter(F.chat.type == 'private',
-                                   IsRegistrated())
+                                   IsRegistrated(), IsInChatAndChannel(),
+                                   IsNotBanned())
 
 poll_channel_router = Router()
 poll_channel_router.poll_answer.filter(F.chat.type == 'channel')

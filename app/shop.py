@@ -12,7 +12,8 @@ from database.database_shop import (get_list_of_products, get_product,
 from app.keyboards import (generate_markup_list_of_products, shop_markup,
                            question_markup, return_to_list_markup, make_product_accepting,
                            publish_product_markup, return_markup)
-from app.filters import TitleFilter, DescriptionFilter, PriceFilter, state_from_state_group
+from app.filters import (TitleFilter, DescriptionFilter, PriceFilter, state_from_state_group,
+                         IsInChatAndChannel, IsNotBanned)
 from app.registration import typing
 
 from aiosqlite import Row
@@ -21,7 +22,8 @@ ANY_STATE = StateFilter(State(state="*"))
 ADMIN_GROUP_ID = dotenv_values().get('ADMIN_GROUP_ID')
 
 shop_router = Router()
-shop_router.message.filter(F.chat.type == 'private')
+shop_router.message.filter(F.chat.type == 'private', IsInChatAndChannel(),
+                           IsNotBanned())
 shop_group_router = Router()
 shop_group_router.message.filter(F.chat.type.in_(['group', 'supergroup']))
 
